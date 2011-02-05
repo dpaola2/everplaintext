@@ -3,17 +3,34 @@
         [net.cgrand.enlive-html :as html])
     (:gen-class))
 
-(defn resource-from-file [filename] (html/html-resource (java.io.StringReader. (.getAbsolutePath filename))))
+(import [java.io File] 
+        [java.io StringReader]
+        [java.io FileNotFoundException])
 
-(defn text-from-html [filename]
+(defn resource-from-file [filename] (html/html-resource (StringReader. (slurp filename))))
+
+(defn text-from-html [html-string]
     (first
         ((first 
             (html/select 
-                (resource-from-file filename) [:body])) 
+                html-string [:body])) 
         :content)))
+
+(defn list-filenames [directory] 
+    (map 
+        #(.getAbsolutePath %) 
+        (filter 
+            #(if (.isFile %) 
+                true 
+                false) 
+            (.listFiles (File. directory)))))
 
 (defn -main [& args] 
     (try 
-        (loop [file (.listFiles (new java.io.File (first args)))]
-            (println (text-from-html file)))
-        (catch java.io.FileNotFoundException e (println "File not found."))))
+        (map 
+            (fn [filename] 
+                (do (
+                    (println (str "Reading " filename "..."))
+                    text-from-html (resource-from-file filename))))
+            (list-filenames (first args)))
+        (catch FileNotFoundException e (println "File not found."))))
